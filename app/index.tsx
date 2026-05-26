@@ -2,6 +2,7 @@ import { Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, Plat
 import { useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 export default function LoginScreen() {
@@ -55,11 +56,22 @@ export default function LoginScreen() {
       if (response.data.success) {
         const token = response.data.data.accessToken;
         
+        // ------------------------------------------------------------------
+        // NAYA CODE: Save Name & Email directly to Storage upon successful login
+        // ------------------------------------------------------------------
+        const loggedInUserEmail = response.data.data.user?.email || email;
+        const loggedInUserName = response.data.data.user?.username || email.split('@')[0];
+
         if (Platform.OS === "web") {
           localStorage.setItem("userToken", token);
+          localStorage.setItem("userName", loggedInUserName);
+          localStorage.setItem("userEmail", loggedInUserEmail);
         } else {
           await SecureStore.setItemAsync("userToken", token);
+          await AsyncStorage.setItem("userName", loggedInUserName);
+          await AsyncStorage.setItem("userEmail", loggedInUserEmail);
         }
+        // ------------------------------------------------------------------
         
         router.replace("/courses");
       }
@@ -122,7 +134,6 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
-        {/* YAHAN WAPAS AA GAYA SIGN UP BUTTON */}
         <TouchableOpacity onPress={() => router.replace("/register")} className="mt-6">
           <Text className="text-center text-blue-600 font-semibold">Don't have an account? Sign Up</Text>
         </TouchableOpacity>

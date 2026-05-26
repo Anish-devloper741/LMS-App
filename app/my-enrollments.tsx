@@ -1,11 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Image, Alert } from "react-native";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 export default function MyEnrollmentsScreen() {
-  const [enrolledIDs, setEnrolledIDs] = useState([]);
   const [coursesData, setCoursesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -13,25 +12,18 @@ export default function MyEnrollmentsScreen() {
     loadEnrolledIDs();
   }, []);
 
-  // 1. Storage se enrolled IDs nikalo
   const loadEnrolledIDs = async () => {
     try {
-      let storedEnrollments = null;
-      if (Platform.OS === "web") {
-        storedEnrollments = localStorage.getItem("enrolledCourses");
-      } else {
-        storedEnrollments = await AsyncStorage.getItem("enrolledCourses");
-      }
+      let storedEnrollments = Platform.OS === "web" 
+        ? localStorage.getItem("enrolledCourses") 
+        : await AsyncStorage.getItem("enrolledCourses");
       
       if (storedEnrollments) {
         const ids = JSON.parse(storedEnrollments);
-        setEnrolledIDs(ids);
-        
-        // Agar IDs hain, toh unki details API se laao
         if (ids.length > 0) {
             fetchCourseDetails(ids);
         } else {
-            setLoading(false); // List khali hai
+            setLoading(false); 
         }
       } else {
         setLoading(false);
@@ -42,21 +34,25 @@ export default function MyEnrollmentsScreen() {
     }
   };
 
-  // 2. API se details laao (Kyunki humare paas sirf IDs hain)
   const fetchCourseDetails = async (idsToFetch: any) => {
     try {
       const response = await axios.get("https://api.freeapi.app/api/v1/public/books");
       
-      // API se aane wale saare data ko humare format mein badlo
-      const allCourses = response.data.data.data.map((book: any) => ({
-        id: book.id,
-        title: book.volumeInfo?.title || "Course Title",
-        instructor: book.volumeInfo?.authors?.[0] || "Instructor",
-      }));
+      const allCourses = response.data.data.data.map((book: any) => {
+        let imgUrl = book.volumeInfo?.imageLinks?.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3";
+        if (imgUrl.startsWith("http://")) imgUrl = imgUrl.replace("http://", "https://");
+        
+        return {
+          id: String(book.id), 
+          title: book.volumeInfo?.title || "Course Title",
+          instructor: book.volumeInfo?.authors?.[0] || "Instructor",
+          thumbnail: imgUrl
+        };
+      });
 
-      // Sirf wahi courses rakho jinki ID humari enrolled list mein hai
+      const stringIdsToFetch = idsToFetch.map(String);
       const myEnrolledCourses = allCourses.filter((course: any) => 
-         idsToFetch.includes(course.id)
+         stringIdsToFetch.includes(course.id)
       );
 
       setCoursesData(myEnrolledCourses);
@@ -67,17 +63,38 @@ export default function MyEnrollmentsScreen() {
     }
   };
 
+  // NAYA FUNCTION: Enrollment cancel karne ke liye
+  const cancelEnrollment = async (idToRemove: string) => {
+    // 1. Screen se course ko turant hatao
+    const updatedCourses = coursesData.filter(course => course.id !== idToRemove);
+    setCoursesData(updatedCourses);
+
+    // 2. Storage se ID ko hamesha ke liye delete karo
+    const updatedIDs = updatedCourses.map(course => course.id);
+    
+    if (Platform.OS === "web") {
+      localStorage.setItem("enrolledCourses", JSON.stringify(updatedIDs));
+    } else {
+      await AsyncStorage.setItem("enrolledCourses", JSON.stringify(updatedIDs));
+    }
+
+    if (Platform.OS === 'web') {
+      window.alert("Enrollment cancelled successfully.");
+    } else {
+      Alert.alert("Cancelled", "Enrollment cancelled successfully.");
+    }
+  };
+
   return (
-    <View className="flex-1 bg-white">
-      {/* Header */}
-      <View className="pt-12 pb-4 px-4 bg-blue-600 flex-row items-center">
-         <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 bg-blue-700 rounded-full">
-           <Text className="text-white font-bold">← Back</Text>
+    <View className="flex-1 bg-gray-50">
+      <View className="pt-14 pb-4 px-4 bg-white flex-row items-center shadow-sm z-10 border-b border-gray-200">
+         <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 bg-gray-100 rounded-full">
+           <Text className="text-gray-800 font-bold">← Back</Text>
          </TouchableOpacity>
-         <Text className="text-white font-bold text-xl flex-1">My Enrollments</Text>
+         <Text className="text-gray-900 font-extrabold text-2xl flex-1">My Enrollments</Text>
+         <Text className="text-2xl">📚</Text>
       </View>
 
-      {/* Main Content */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
            <ActivityIndicator size="large" color="#2563eb" />
@@ -87,22 +104,39 @@ export default function MyEnrollmentsScreen() {
         <View className="flex-1 justify-center items-center px-6">
            <Text className="text-6xl mb-4">📭</Text>
            <Text className="text-xl font-bold text-gray-800 mb-2">No Enrollments Yet</Text>
-           <Text className="text-center text-gray-500">You haven't enrolled in any courses yet. Go back to discover page and start learning!</Text>
+           <Text className="text-center text-gray-500">You haven't enrolled in any courses yet. Go back and start learning!</Text>
         </View>
       ) : (
         <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+          <Text className="text-gray-500 font-semibold mb-4 ml-1">{coursesData.length} Active Courses</Text>
+          
           {coursesData.map((course, index) => (
-            <View key={index} className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200">
-               <View className="flex-row justify-between items-center">
-                  <View className="flex-1">
-                     <Text className="font-bold text-lg text-gray-800">{course.title}</Text>
-                     <Text className="text-gray-500 mt-1">By {course.instructor}</Text>
-                  </View>
-                  <View className="bg-green-100 px-3 py-1 rounded-full ml-2">
-                     <Text className="text-green-700 font-bold text-xs">Active</Text>
+            <TouchableOpacity 
+              key={index} 
+              onPress={() => router.push({ pathname: "/course/[id]", params: { courseData: JSON.stringify(course), id: course.id } })}
+              className="bg-white p-3 rounded-2xl mb-4 border border-gray-100 shadow-sm flex-row items-center"
+            >
+               <Image 
+                 source={{ uri: course.thumbnail }} 
+                 className="w-20 h-20 rounded-xl bg-gray-200 mr-4"
+                 resizeMode="cover"
+               />
+               <View className="flex-1 pr-2">
+                  <Text className="font-bold text-base text-gray-900" numberOfLines={2}>{course.title}</Text>
+                  <Text className="text-gray-500 text-xs mt-1 font-medium">By {course.instructor}</Text>
+                  <View className="bg-green-100 px-2 py-1 rounded-md mt-2 self-start">
+                     <Text className="text-green-700 font-bold text-[10px] uppercase">Enrolled</Text>
                   </View>
                </View>
-            </View>
+
+               {/* NAYA UI: Cancel Enrollment Button */}
+               <TouchableOpacity 
+                 onPress={() => cancelEnrollment(course.id)}
+                 className="p-3 bg-red-50 rounded-full ml-1"
+               >
+                 <Text className="text-red-500 text-lg">✖️</Text>
+               </TouchableOpacity>
+            </TouchableOpacity>
           ))}
           <View className="h-10" />
         </ScrollView>

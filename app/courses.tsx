@@ -38,8 +38,9 @@ const CourseCard = memo(({ item, isBookmarked, toggleBookmark }: { item: any, is
 
 export default function CoursesScreen() {
   const [courses, setCourses] = useState<any[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<any[]>([]); // Search ke liye
-  const [searchQuery, setSearchQuery] = useState(""); // Search input state
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null); 
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,25 +57,41 @@ export default function CoursesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadBookmarks();
+      loadBookmarksAndProfile();
     }, [])
   );
 
-  const loadBookmarks = async () => {
+  const loadBookmarksAndProfile = async () => {
     try {
-      let stored = Platform.OS === 'web' ? localStorage.getItem('bookmarkedCourses') : await AsyncStorage.getItem('bookmarkedCourses');
-      if (stored) setBookmarkedIds(JSON.parse(stored));
+      // 1. Load Bookmarks (Convert them to strings just to be safe)
+      let storedBookmarks = Platform.OS === 'web' ? localStorage.getItem('bookmarkedCourses') : await AsyncStorage.getItem('bookmarkedCourses');
+      if (storedBookmarks) {
+        const parsedBookmarks = JSON.parse(storedBookmarks);
+        // Ensure all loaded IDs are strings
+        setBookmarkedIds(parsedBookmarks.map(String));
+      }
+
+      // 2. Load Profile Image
+      let storedImage = Platform.OS === 'web' ? localStorage.getItem('profileImage') : await AsyncStorage.getItem('profileImage');
+      if (storedImage) {
+        setProfileImage(storedImage);
+      } else {
+         setProfileImage(null);
+      }
     } catch (e) {
-      console.log("Error loading bookmarks");
+      console.log("Error loading data");
     }
   };
 
   const handleToggleBookmark = async (id: string) => {
+    // Ensure the incoming ID is a string
+    const stringId = String(id);
     let updatedList = [...bookmarkedIds];
-    if (updatedList.includes(id)) {
-      updatedList = updatedList.filter(bId => bId !== id);
+    
+    if (updatedList.includes(stringId)) {
+      updatedList = updatedList.filter(bId => bId !== stringId);
     } else {
-      updatedList.push(id);
+      updatedList.push(stringId);
       
       if (updatedList.length === 5) {
         if (Platform.OS === 'web') {
@@ -93,7 +110,7 @@ export default function CoursesScreen() {
   };
 
   // ---------------------------------------------------------
-  // Original API Logic (Books API) - Images work perfectly here!
+  // Original API Logic (Books API)
   // ---------------------------------------------------------
   const fetchCourses = async (retryCount = 0) => {
     try {
@@ -103,13 +120,12 @@ export default function CoursesScreen() {
       
       const formattedCourses = response.data.data.data.map((book: any) => {
         let imgUrl = book.volumeInfo?.imageLinks?.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3";
-        // Force https just to be safe
         if (imgUrl.startsWith("http://")) {
             imgUrl = imgUrl.replace("http://", "https://");
         }
 
         return {
-          id: String(book.id),
+          id: String(book.id), // Ensure the ID is always a String
           title: book.volumeInfo?.title || "Modern Development",
           description: book.volumeInfo?.description || "Learn the latest tech stacks.",
           instructor: book.volumeInfo?.authors?.[0] || "House of Edtech",
@@ -134,9 +150,6 @@ export default function CoursesScreen() {
     fetchCourses();
   }, []);
 
-  // ---------------------------------------------------------
-  // Search functionality
-  // ---------------------------------------------------------
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     if (text.trim() === "") {
@@ -153,7 +166,7 @@ export default function CoursesScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchCourses();
-    setSearchQuery(""); // Reset search on refresh
+    setSearchQuery(""); 
     setRefreshing(false);
   }, []);
 
@@ -165,12 +178,24 @@ export default function CoursesScreen() {
       
       <View className="flex-row justify-between items-center mb-4 mt-4">
         <Text className="text-3xl font-bold text-gray-900">Discover</Text>
-        <TouchableOpacity onPress={() => router.push("/profile")} className="bg-blue-100 p-2 rounded-full">
-           <Text className="text-xl">👤</Text>
+        
+        <TouchableOpacity 
+          onPress={() => router.push("/profile")} 
+          className="rounded-full shadow-sm"
+        >
+          {profileImage ? (
+             <Image 
+                source={{ uri: profileImage }} 
+                className="w-12 h-12 rounded-full border-2 border-blue-500 bg-gray-200"
+             />
+          ) : (
+             <View className="w-12 h-12 rounded-full bg-blue-100 items-center justify-center border-2 border-blue-200">
+                <Text className="text-2xl">👤</Text>
+             </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* SEARCH BAR UI */}
       <View className="bg-white px-4 py-3 rounded-xl mb-6 shadow-sm border border-gray-100 flex-row items-center">
          <Text className="text-xl mr-2">🔍</Text>
          <TextInput 
@@ -188,7 +213,8 @@ export default function CoursesScreen() {
           data={filteredCourses}
           keyExtractor={(item: any) => String(item.id)}
           estimatedItemSize={250}
-          renderItem={({ item }) => <CourseCard item={item} isBookmarked={bookmarkedIds.includes(item.id)} toggleBookmark={handleToggleBookmark} />}
+          // The critical check here: we must stringify the ID before checking included
+          renderItem={({ item }) => <CourseCard item={item} isBookmarked={bookmarkedIds.includes(String(item.id))} toggleBookmark={handleToggleBookmark} />}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />

@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Image, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, Image } from "react-native";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -40,16 +40,21 @@ export default function MyBookmarksScreen() {
     try {
       const response = await axios.get("https://api.freeapi.app/api/v1/public/books");
       
-      const allCourses = response.data.data.data.map((book: any) => ({
-        id: book.id,
-        title: book.volumeInfo?.title || "Course Title",
-        instructor: book.volumeInfo?.authors?.[0] || "Instructor",
-        // Thumbnail add kiya gaya hai list mein dikhane ke liye
-        thumbnail: book.volumeInfo?.imageLinks?.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3"
-      }));
+      const allCourses = response.data.data.data.map((book: any) => {
+        let imgUrl = book.volumeInfo?.imageLinks?.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3";
+        if (imgUrl.startsWith("http://")) imgUrl = imgUrl.replace("http://", "https://");
+        
+        return {
+          id: String(book.id), // Ensure ID is string format
+          title: book.volumeInfo?.title || "Course Title",
+          instructor: book.volumeInfo?.authors?.[0] || "Instructor",
+          thumbnail: imgUrl
+        };
+      });
 
+      const stringIdsToFetch = idsToFetch.map(String);
       const mySavedCourses = allCourses.filter((course: any) => 
-         idsToFetch.includes(course.id)
+         stringIdsToFetch.includes(course.id)
       );
 
       setCoursesData(mySavedCourses);
@@ -60,7 +65,6 @@ export default function MyBookmarksScreen() {
     }
   };
 
-  // Naya function: List se course ko hatane ke liye
   const removeBookmark = async (idToRemove: string) => {
     const updatedCourses = coursesData.filter(course => course.id !== idToRemove);
     setCoursesData(updatedCourses);
@@ -76,7 +80,6 @@ export default function MyBookmarksScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header */}
       <View className="pt-14 pb-4 px-4 bg-white flex-row items-center shadow-sm z-10 border-b border-gray-200">
          <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 bg-gray-100 rounded-full">
            <Text className="text-gray-800 font-bold">← Back</Text>
@@ -85,7 +88,6 @@ export default function MyBookmarksScreen() {
          <Text className="text-2xl">🔖</Text>
       </View>
 
-      {/* Main Content */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
            <ActivityIndicator size="large" color="#f97316" />
@@ -102,26 +104,20 @@ export default function MyBookmarksScreen() {
           <Text className="text-gray-500 font-semibold mb-4 ml-1">{coursesData.length} Saved Items</Text>
           
           {coursesData.map((course, index) => (
-            // Proper Bookmark List Item Style
             <TouchableOpacity 
               key={index} 
               onPress={() => router.push({ pathname: "/course/[id]", params: { courseData: JSON.stringify(course), id: course.id } })}
               className="bg-white p-3 rounded-2xl mb-4 border border-gray-100 shadow-sm flex-row items-center"
             >
-               {/* Left: Thumbnail Image */}
                <Image 
                  source={{ uri: course.thumbnail }} 
                  className="w-20 h-20 rounded-xl bg-gray-200 mr-4"
                  resizeMode="cover"
                />
-               
-               {/* Middle: Course Details */}
                <View className="flex-1 pr-2">
                   <Text className="font-bold text-base text-gray-900" numberOfLines={2}>{course.title}</Text>
                   <Text className="text-gray-500 text-xs mt-1 font-medium">By {course.instructor}</Text>
                </View>
-
-               {/* Right: Delete Button */}
                <TouchableOpacity 
                  onPress={() => removeBookmark(course.id)}
                  className="p-3 bg-red-50 rounded-full ml-1"

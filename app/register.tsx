@@ -1,4 +1,12 @@
-import { Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
+import {
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
 import axios from "axios";
@@ -10,9 +18,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    // Basic validation
     if (!username || !email || !password) {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         window.alert("Please fill all the fields");
       } else {
         Alert.alert("Error", "Please fill all the fields");
@@ -23,28 +30,29 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      // FreeAPI Registration call
-      // FreeAPI Registration call
-      // Dhyan de: 'role' ko uppercase "USER" hi rakhna hai
-      const response = await axios.post("https://api.freeapi.app/api/v1/users/register", {
-        username: username.toLowerCase().trim(), // Username mein spaces ya capitals allow nahi hote
-        email: email.trim(), 
-        password: password,
-        role: "USER"
-      });
+      const response = await axios.post(
+        "https://api.freeapi.app/api/v1/users/register",
+        {
+          username: username.toLowerCase().trim(), // Username mein spaces ya capitals allow nahi hote
+          email: email.trim(),
+          password: password,
+          role: "USER",
+        },
+      );
 
       // Agar successful ho gaya toh Login screen par bhej do
       if (response.data.success) {
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
           window.alert("Registration Successful! Please login.");
         } else {
           Alert.alert("Success", "Registration Successful! Please login.");
         }
-        router.replace("/"); 
+        router.replace("/");
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || "Registration failed. Try again.";
-      if (Platform.OS === 'web') {
+      const errorMsg =
+        error.response?.data?.message || "Registration failed. Try again.";
+      if (Platform.OS === "web") {
         window.alert(errorMsg);
       } else {
         Alert.alert("Error", errorMsg);
@@ -56,10 +64,14 @@ export default function RegisterScreen() {
 
   return (
     <View className="flex-1 justify-center items-center bg-gray-100 p-6">
-      <Text className="text-4xl font-bold text-blue-700 mb-10">House of Edtech</Text>
+      <Text className="text-4xl font-bold text-blue-700 mb-10">
+        House of Edtech
+      </Text>
 
       <View className="w-full max-w-md bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-        <Text className="text-xl font-bold text-gray-800 mb-6">Create an Account</Text>
+        <Text className="text-xl font-bold text-gray-800 mb-6">
+          Create an Account
+        </Text>
 
         <Text className="text-gray-700 mb-2 font-semibold">Username</Text>
         <TextInput
@@ -89,20 +101,22 @@ export default function RegisterScreen() {
           onChangeText={setPassword}
         />
 
-        <TouchableOpacity 
+        <TouchableOpacity
           className="w-full bg-green-600 p-4 rounded-xl items-center shadow-md"
           onPress={handleRegister}
           disabled={loading}
         >
           {loading ? (
-             <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color="#ffffff" />
           ) : (
-             <Text className="text-white font-bold text-lg">Sign Up</Text>
+            <Text className="text-white font-bold text-lg">Sign Up</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.replace("/")} className="mt-6">
-          <Text className="text-center text-blue-600 font-semibold">Already have an account? Login</Text>
+          <Text className="text-center text-blue-600 font-semibold">
+            Already have an account? Login
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

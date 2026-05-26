@@ -50,7 +50,6 @@ export default function CourseContentScreen() {
       <WebView 
         source={{ 
           html: customHTML,
-          // Yahan hum Native app se Webview ko headers bhej rahe hain
           headers: {
             "Authorization": "Bearer sample-assignment-token",
             "App-Platform": "ReactNative",
