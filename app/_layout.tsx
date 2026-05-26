@@ -3,7 +3,10 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import "../global.css"; 
+
+// TypeScript ko is CSS file ko ignore karne ke liye bol rahe hain
+// @ts-ignore
+import "../global.css";
 
 export default function RootLayout() {
   useEffect(() => {
