@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  // Yeh batata hai ki Tailwind kahan-kahan use hoga
+  // Yahan hum tailwind ko bata rahe hain ki styling kahan apply karni hai
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {

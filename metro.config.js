@@ -1,2 +1,7 @@
 const { getDefaultConfig } = require("expo/metro-config");
-module.exports = getDefaultConfig(__dirname);
+const { withNativeWind } = require("nativewind/metro");
+
+const config = getDefaultConfig(__dirname);
+
+// global.css ko yahan connect karna zaroori hai NativeWind v4 ke liye
+module.exports = withNativeWind(config, { input: "./global.css" });
